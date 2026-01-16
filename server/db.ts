@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, deletedItems, InsertDeletedItem } from "../drizzle/schema";
+import { InsertUser, users, deletedItems, InsertDeletedItem, tweetEdits, InsertTweetEdit, userFavorites, InsertUserFavorite } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -211,4 +211,178 @@ export async function getDeletedTweetIndices(threadId: string): Promise<number[]
   return result
     .filter(item => item.tweetIndex !== null)
     .map(item => item.tweetIndex as number);
+}
+
+// ============ Tweet Edits Management ============
+
+/**
+ * Get all tweet edits
+ */
+export async function getAllTweetEdits() {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get tweet edits: database not available");
+    return [];
+  }
+
+  return await db.select().from(tweetEdits);
+}
+
+/**
+ * Get tweet edit for a specific tweet
+ */
+export async function getTweetEdit(threadId: string, tweetIndex: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select()
+    .from(tweetEdits)
+    .where(
+      and(
+        eq(tweetEdits.threadId, threadId),
+        eq(tweetEdits.tweetIndex, tweetIndex)
+      )
+    )
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+/**
+ * Save or update a tweet edit
+ */
+export async function saveTweetEdit(
+  threadId: string, 
+  tweetIndex: number, 
+  editedText: string | null, 
+  hiddenMedia: string[] | null,
+  userId: number
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  // Check if edit already exists
+  const existing = await getTweetEdit(threadId, tweetIndex);
+  
+  if (existing) {
+    // Update existing edit
+    await db.update(tweetEdits)
+      .set({
+        editedText,
+        hiddenMedia,
+        editedAt: new Date(),
+        editedBy: userId,
+      })
+      .where(eq(tweetEdits.id, existing.id));
+  } else {
+    // Insert new edit
+    await db.insert(tweetEdits).values({
+      threadId,
+      tweetIndex,
+      editedText,
+      hiddenMedia,
+      editedBy: userId,
+    });
+  }
+}
+
+/**
+ * Delete a tweet edit (restore to original)
+ */
+export async function deleteTweetEdit(threadId: string, tweetIndex: number) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db.delete(tweetEdits).where(
+    and(
+      eq(tweetEdits.threadId, threadId),
+      eq(tweetEdits.tweetIndex, tweetIndex)
+    )
+  );
+}
+
+// ============ User Favorites Management ============
+
+/**
+ * Get all favorites for a user
+ */
+export async function getUserFavorites(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get favorites: database not available");
+    return [];
+  }
+
+  return await db.select()
+    .from(userFavorites)
+    .where(eq(userFavorites.userId, userId));
+}
+
+/**
+ * Add a thread to favorites
+ */
+export async function addFavorite(userId: number, threadId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  // Check if already favorited
+  const existing = await db.select()
+    .from(userFavorites)
+    .where(
+      and(
+        eq(userFavorites.userId, userId),
+        eq(userFavorites.threadId, threadId)
+      )
+    )
+    .limit(1);
+
+  if (existing.length === 0) {
+    await db.insert(userFavorites).values({
+      userId,
+      threadId,
+    });
+  }
+}
+
+/**
+ * Remove a thread from favorites
+ */
+export async function removeFavorite(userId: number, threadId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db.delete(userFavorites).where(
+    and(
+      eq(userFavorites.userId, userId),
+      eq(userFavorites.threadId, threadId)
+    )
+  );
+}
+
+/**
+ * Check if a thread is favorited by a user
+ */
+export async function isFavorited(userId: number, threadId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const result = await db.select()
+    .from(userFavorites)
+    .where(
+      and(
+        eq(userFavorites.userId, userId),
+        eq(userFavorites.threadId, threadId)
+      )
+    )
+    .limit(1);
+
+  return result.length > 0;
 }

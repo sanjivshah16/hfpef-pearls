@@ -9,6 +9,12 @@ import {
   deleteTweet,
   restoreThread,
   restoreTweet,
+  getAllTweetEdits,
+  saveTweetEdit,
+  deleteTweetEdit,
+  getUserFavorites,
+  addFavorite,
+  removeFavorite,
 } from "./db";
 
 export const appRouter = router({
@@ -30,6 +36,12 @@ export const appRouter = router({
     getDeletedItems: adminProcedure.query(async () => {
       const items = await getDeletedItems();
       return items;
+    }),
+
+    // Get all tweet edits
+    getTweetEdits: adminProcedure.query(async () => {
+      const edits = await getAllTweetEdits();
+      return edits;
     }),
 
     // Delete an entire thread
@@ -67,6 +79,61 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         await restoreTweet(input.threadId, input.tweetIndex);
+        return { success: true };
+      }),
+
+    // Save tweet edit (text and/or hidden media)
+    saveTweetEdit: adminProcedure
+      .input(z.object({
+        threadId: z.string(),
+        tweetIndex: z.number(),
+        editedText: z.string().nullable(),
+        hiddenMedia: z.array(z.string()).nullable(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await saveTweetEdit(
+          input.threadId,
+          input.tweetIndex,
+          input.editedText,
+          input.hiddenMedia,
+          ctx.user.id
+        );
+        return { success: true };
+      }),
+
+    // Delete tweet edit (restore to original)
+    deleteTweetEdit: adminProcedure
+      .input(z.object({
+        threadId: z.string(),
+        tweetIndex: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        await deleteTweetEdit(input.threadId, input.tweetIndex);
+        return { success: true };
+      }),
+  }),
+
+  // User favorites routes
+  favorites: router({
+    // Get user's favorites
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const favorites = await getUserFavorites(ctx.user.id);
+      return favorites.map(f => f.threadId);
+    }),
+
+    // Add to favorites
+    add: protectedProcedure
+      .input(z.object({ threadId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        await addFavorite(ctx.user.id, input.threadId);
+        return { success: true };
+      }),
+
+    // Remove from favorites
+    remove: protectedProcedure
+      .input(z.object({ threadId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        await removeFavorite(ctx.user.id, input.threadId);
         return { success: true };
       }),
   }),

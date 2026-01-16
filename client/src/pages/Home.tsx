@@ -3,7 +3,7 @@ import { useThreads } from '@/hooks/useThreads';
 import { ThreadCard } from '@/components/ThreadCard';
 import { ThreadFilterBar } from '@/components/ThreadFilterBar';
 import { Button } from '@/components/ui/button';
-import { Loader2, Heart, BookOpen, FileText, Image, LogIn, LogOut, Shield, Layers } from 'lucide-react';
+import { Loader2, Heart, BookOpen, FileText, Image, LogIn, LogOut, Shield, Layers, Star } from 'lucide-react';
 import { getLoginUrl } from '@/const';
 import { Link } from 'wouter';
 import type { Category } from '@/types/thread';
@@ -27,9 +27,14 @@ export default function Home() {
     setSelectedYear,
     pearlsOnly,
     setPearlsOnly,
+    favoritesOnly,
+    setFavoritesOnly,
     isAdmin,
     handleDeleteThread,
     handleDeleteTweet,
+    handleSaveTweetEdit,
+    handleToggleFavorite,
+    isFavorited,
   } = useThreads();
 
   if (loading) {
@@ -78,7 +83,7 @@ export default function Home() {
                   {isAdmin && (
                     <span className="flex items-center gap-1 text-xs bg-white/20 px-2 py-1 rounded-full">
                       <Shield className="w-3 h-3" />
-                      Admin Mode
+                      Edit Mode
                     </span>
                   )}
                   <Button
@@ -112,7 +117,7 @@ export default function Home() {
           {/* Admin notice */}
           {isAdmin && (
             <div className="mt-4 bg-white/10 rounded-lg px-4 py-2 text-sm">
-              <strong>Admin Mode:</strong> Hover over threads or tweets to see delete buttons. Deletions are saved automatically.
+              <strong>Edit Mode:</strong> Hover over threads or tweets to see edit/delete buttons. Changes are saved automatically to the database.
             </div>
           )}
           
@@ -134,6 +139,12 @@ export default function Home() {
               <Image className="w-5 h-5 text-rose-200" />
               <span className="text-rose-100">{stats.totalWithMedia} with media</span>
             </div>
+            {isAuthenticated && stats.totalFavorites > 0 && (
+              <div className="flex items-center gap-2">
+                <Star className="w-5 h-5 text-rose-200 fill-rose-200" />
+                <span className="text-rose-100">{stats.totalFavorites} favorites</span>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -151,17 +162,21 @@ export default function Home() {
             setSelectedYear={setSelectedYear}
             pearlsOnly={pearlsOnly}
             setPearlsOnly={setPearlsOnly}
+            favoritesOnly={favoritesOnly}
+            setFavoritesOnly={setFavoritesOnly}
             categories={categories}
             years={years}
             filteredCount={stats.filteredCount}
             totalCount={stats.totalThreads}
+            isAuthenticated={isAuthenticated}
+            totalFavorites={stats.totalFavorites}
           />
         </div>
 
         {/* Thread list */}
         {threads.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            <p>No threads match your filters.</p>
+            <p>{favoritesOnly ? 'No favorites yet. Heart some threads to see them here!' : 'No threads match your filters.'}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -170,8 +185,12 @@ export default function Home() {
                 key={thread.id} 
                 thread={thread}
                 isAdmin={isAdmin}
+                isAuthenticated={isAuthenticated}
+                isFavorited={isFavorited(thread.id)}
                 onDeleteThread={handleDeleteThread}
                 onDeleteTweet={handleDeleteTweet}
+                onSaveTweetEdit={handleSaveTweetEdit}
+                onToggleFavorite={handleToggleFavorite}
               />
             ))}
           </div>

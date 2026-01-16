@@ -12,6 +12,16 @@ interface DeletedItem {
   deletedBy: number | null;
 }
 
+interface TweetEdit {
+  id: number;
+  threadId: string;
+  tweetIndex: number;
+  editedText: string | null;
+  hiddenMedia: string[] | null;
+  editedAt: Date;
+  editedBy: number | null;
+}
+
 export function useThreads() {
   const [allThreads, setAllThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,11 +36,24 @@ export function useThreads() {
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [selectedYear, setSelectedYear] = useState<number | 'All'>('All');
   const [pearlsOnly, setPearlsOnly] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   // Get deleted items from API (only for admins)
   const { data: deletedItems, refetch: refetchDeletedItems } = trpc.admin.getDeletedItems.useQuery(
     undefined,
     { enabled: isAdmin }
+  );
+
+  // Get tweet edits from API (only for admins)
+  const { data: tweetEdits, refetch: refetchTweetEdits } = trpc.admin.getTweetEdits.useQuery(
+    undefined,
+    { enabled: isAdmin }
+  );
+
+  // Get user favorites
+  const { data: favorites, refetch: refetchFavorites } = trpc.favorites.list.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
   );
 
   // Mutations for delete/restore
@@ -45,6 +68,22 @@ export function useThreads() {
   });
   const restoreTweetMutation = trpc.admin.restoreTweet.useMutation({
     onSuccess: () => refetchDeletedItems(),
+  });
+
+  // Mutations for tweet edits
+  const saveTweetEditMutation = trpc.admin.saveTweetEdit.useMutation({
+    onSuccess: () => refetchTweetEdits(),
+  });
+  const deleteTweetEditMutation = trpc.admin.deleteTweetEdit.useMutation({
+    onSuccess: () => refetchTweetEdits(),
+  });
+
+  // Mutations for favorites
+  const addFavoriteMutation = trpc.favorites.add.useMutation({
+    onSuccess: () => refetchFavorites(),
+  });
+  const removeFavoriteMutation = trpc.favorites.remove.useMutation({
+    onSuccess: () => refetchFavorites(),
   });
 
   useEffect(() => {
@@ -63,40 +102,85 @@ export function useThreads() {
     loadThreads();
   }, []);
 
-  // Filter out deleted items
+  // Create a map of tweet edits for quick lookup
+  const tweetEditsMap = useMemo(() => {
+    if (!tweetEdits) return new Map<string, TweetEdit>();
+    const map = new Map<string, TweetEdit>();
+    tweetEdits.forEach((edit: TweetEdit) => {
+      const key = `${edit.threadId}-${edit.tweetIndex}`;
+      map.set(key, edit);
+    });
+    return map;
+  }, [tweetEdits]);
+
+  // Filter out deleted items and apply edits
   const threads = useMemo(() => {
-    if (!deletedItems || deletedItems.length === 0) return allThreads;
+    let result = allThreads;
 
-    const deletedThreadIds = new Set(
-      deletedItems
-        .filter((item: DeletedItem) => item.itemType === 'thread')
-        .map((item: DeletedItem) => item.threadId)
-    );
+    // Apply deletions
+    if (deletedItems && deletedItems.length > 0) {
+      const deletedThreadIds = new Set(
+        deletedItems
+          .filter((item: DeletedItem) => item.itemType === 'thread')
+          .map((item: DeletedItem) => item.threadId)
+      );
 
-    const deletedTweets = deletedItems
-      .filter((item: DeletedItem) => item.itemType === 'tweet')
-      .reduce((acc: Record<string, Set<number>>, item: DeletedItem) => {
-        if (!acc[item.threadId]) acc[item.threadId] = new Set();
-        if (item.tweetIndex !== null) acc[item.threadId].add(item.tweetIndex);
-        return acc;
-      }, {});
+      const deletedTweets = deletedItems
+        .filter((item: DeletedItem) => item.itemType === 'tweet')
+        .reduce((acc: Record<string, Set<number>>, item: DeletedItem) => {
+          if (!acc[item.threadId]) acc[item.threadId] = new Set();
+          if (item.tweetIndex !== null) acc[item.threadId].add(item.tweetIndex);
+          return acc;
+        }, {});
 
-    return allThreads
-      .filter(thread => !deletedThreadIds.has(thread.id))
-      .map(thread => {
-        const deletedIndices = deletedTweets[thread.id];
-        if (!deletedIndices || deletedIndices.size === 0) return thread;
+      result = result
+        .filter(thread => !deletedThreadIds.has(thread.id))
+        .map(thread => {
+          const deletedIndices = deletedTweets[thread.id];
+          if (!deletedIndices || deletedIndices.size === 0) return thread;
 
-        // Filter out deleted tweets
-        const filteredTweets = thread.tweets.filter((_, index) => !deletedIndices.has(index));
+          // Filter out deleted tweets
+          const filteredTweets = thread.tweets.filter((_, index) => !deletedIndices.has(index));
+          return {
+            ...thread,
+            tweets: filteredTweets,
+            tweet_count: filteredTweets.length,
+          };
+        })
+        .filter(thread => thread.tweets.length > 0);
+    }
+
+    // Apply tweet edits
+    if (tweetEditsMap.size > 0) {
+      result = result.map(thread => {
+        const editedTweets = thread.tweets.map((tweet, index) => {
+          const key = `${thread.id}-${index}`;
+          const edit = tweetEditsMap.get(key);
+          if (!edit) return tweet;
+
+          // Apply text edit
+          let editedTweet = { ...tweet };
+          if (edit.editedText !== null) {
+            editedTweet.text = edit.editedText;
+          }
+
+          // Apply hidden media
+          if (edit.hiddenMedia && edit.hiddenMedia.length > 0) {
+            editedTweet.media = tweet.media.filter(m => !edit.hiddenMedia!.includes(m.path));
+          }
+
+          return editedTweet;
+        });
+
         return {
           ...thread,
-          tweets: filteredTweets,
-          tweet_count: filteredTweets.length,
+          tweets: editedTweets,
         };
-      })
-      .filter(thread => thread.tweets.length > 0); // Remove threads with no tweets left
-  }, [allThreads, deletedItems]);
+      });
+    }
+
+    return result;
+  }, [allThreads, deletedItems, tweetEditsMap]);
 
   // Get unique categories and years
   const categories = useMemo(() => {
@@ -136,9 +220,14 @@ export function useThreads() {
       // Pearls only filter
       if (pearlsOnly && !thread.is_pearl) return false;
 
+      // Favorites only filter
+      if (favoritesOnly && favorites) {
+        if (!favorites.includes(thread.id)) return false;
+      }
+
       return true;
     });
-  }, [threads, searchQuery, selectedCategory, selectedYear, pearlsOnly]);
+  }, [threads, searchQuery, selectedCategory, selectedYear, pearlsOnly, favoritesOnly, favorites]);
 
   // Stats
   const stats = useMemo(() => ({
@@ -147,7 +236,8 @@ export function useThreads() {
     totalPearls: threads.filter(t => t.is_pearl).length,
     totalWithMedia: threads.filter(t => t.media.length > 0).length,
     filteredCount: filteredThreads.length,
-  }), [threads, filteredThreads]);
+    totalFavorites: favorites?.length || 0,
+  }), [threads, filteredThreads, favorites]);
 
   // Admin actions
   const handleDeleteThread = useCallback((threadId: string) => {
@@ -170,8 +260,39 @@ export function useThreads() {
     restoreTweetMutation.mutate({ threadId, tweetIndex });
   }, [isAdmin, restoreTweetMutation]);
 
+  // Tweet edit actions
+  const handleSaveTweetEdit = useCallback((
+    threadId: string, 
+    tweetIndex: number, 
+    editedText: string | null,
+    hiddenMedia: string[] | null
+  ) => {
+    if (!isAdmin) return;
+    saveTweetEditMutation.mutate({ threadId, tweetIndex, editedText, hiddenMedia });
+  }, [isAdmin, saveTweetEditMutation]);
+
+  const handleDeleteTweetEdit = useCallback((threadId: string, tweetIndex: number) => {
+    if (!isAdmin) return;
+    deleteTweetEditMutation.mutate({ threadId, tweetIndex });
+  }, [isAdmin, deleteTweetEditMutation]);
+
+  // Favorite actions
+  const handleToggleFavorite = useCallback((threadId: string) => {
+    if (!isAuthenticated) return;
+    if (favorites?.includes(threadId)) {
+      removeFavoriteMutation.mutate({ threadId });
+    } else {
+      addFavoriteMutation.mutate({ threadId });
+    }
+  }, [isAuthenticated, favorites, addFavoriteMutation, removeFavoriteMutation]);
+
+  const isFavorited = useCallback((threadId: string) => {
+    return favorites?.includes(threadId) || false;
+  }, [favorites]);
+
   return {
     threads: filteredThreads,
+    allThreads: threads, // Unfiltered (but with deletions/edits applied)
     loading,
     error,
     stats,
@@ -186,13 +307,24 @@ export function useThreads() {
     setSelectedYear,
     pearlsOnly,
     setPearlsOnly,
+    favoritesOnly,
+    setFavoritesOnly,
     // Admin
     isAdmin,
     deletedItems: deletedItems || [],
+    tweetEdits: tweetEdits || [],
     handleDeleteThread,
     handleDeleteTweet,
     handleRestoreThread,
     handleRestoreTweet,
+    handleSaveTweetEdit,
+    handleDeleteTweetEdit,
     isDeleting: deleteThreadMutation.isPending || deleteTweetMutation.isPending,
+    isSavingEdit: saveTweetEditMutation.isPending,
+    // Favorites
+    isAuthenticated,
+    favorites: favorites || [],
+    handleToggleFavorite,
+    isFavorited,
   };
 }

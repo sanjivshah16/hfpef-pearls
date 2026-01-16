@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -45,3 +45,42 @@ export const deletedItems = mysqlTable("deleted_items", {
 
 export type DeletedItem = typeof deletedItems.$inferSelect;
 export type InsertDeletedItem = typeof deletedItems.$inferInsert;
+
+/**
+ * Track edits to tweet text and media.
+ * Stores the edited version of tweet content.
+ */
+export const tweetEdits = mysqlTable("tweet_edits", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The thread ID */
+  threadId: varchar("threadId", { length: 64 }).notNull(),
+  /** The tweet index within the thread (0-based) */
+  tweetIndex: int("tweetIndex").notNull(),
+  /** Edited tweet text (null means use original) */
+  editedText: text("editedText"),
+  /** JSON array of media URLs to hide (deleted media) */
+  hiddenMedia: json("hiddenMedia").$type<string[]>(),
+  /** When the edit was made */
+  editedAt: timestamp("editedAt").defaultNow().notNull(),
+  /** Who made the edit (user ID) */
+  editedBy: int("editedBy"),
+});
+
+export type TweetEdit = typeof tweetEdits.$inferSelect;
+export type InsertTweetEdit = typeof tweetEdits.$inferInsert;
+
+/**
+ * User favorites - bookmarked threads.
+ */
+export const userFavorites = mysqlTable("user_favorites", {
+  id: int("id").autoincrement().primaryKey(),
+  /** User who favorited */
+  userId: int("userId").notNull(),
+  /** The thread ID that was favorited */
+  threadId: varchar("threadId", { length: 64 }).notNull(),
+  /** When it was favorited */
+  favoritedAt: timestamp("favoritedAt").defaultNow().notNull(),
+});
+
+export type UserFavorite = typeof userFavorites.$inferSelect;
+export type InsertUserFavorite = typeof userFavorites.$inferInsert;

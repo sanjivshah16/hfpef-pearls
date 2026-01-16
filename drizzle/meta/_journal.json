@@ -15,6 +15,13 @@
       "when": 1768587369780,
       "tag": "0001_keen_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1768600511084,
+      "tag": "0002_busy_red_shift",
+      "breakpoints": true
     }
   ]
 }

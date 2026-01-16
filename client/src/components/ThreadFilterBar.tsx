@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, X } from 'lucide-react';
+import { Search, Star, X, Heart } from 'lucide-react';
 import type { Category } from '@/types/thread';
 
 interface FilterBarProps {
@@ -13,10 +13,14 @@ interface FilterBarProps {
   setSelectedYear: (year: number | 'All') => void;
   pearlsOnly: boolean;
   setPearlsOnly: (value: boolean) => void;
+  favoritesOnly?: boolean;
+  setFavoritesOnly?: (value: boolean) => void;
   categories: string[];
   years: number[];
   filteredCount: number;
   totalCount: number;
+  isAuthenticated?: boolean;
+  totalFavorites?: number;
 }
 
 export function ThreadFilterBar({
@@ -28,18 +32,23 @@ export function ThreadFilterBar({
   setSelectedYear,
   pearlsOnly,
   setPearlsOnly,
+  favoritesOnly,
+  setFavoritesOnly,
   categories,
   years,
   filteredCount,
   totalCount,
+  isAuthenticated,
+  totalFavorites,
 }: FilterBarProps) {
-  const hasFilters = searchQuery || selectedCategory !== 'All' || selectedYear !== 'All' || pearlsOnly;
+  const hasFilters = searchQuery || selectedCategory !== 'All' || selectedYear !== 'All' || pearlsOnly || favoritesOnly;
   
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory('All');
     setSelectedYear('All');
     setPearlsOnly(false);
+    if (setFavoritesOnly) setFavoritesOnly(false);
   };
   
   return (
@@ -98,6 +107,18 @@ export function ThreadFilterBar({
           <Star className={`w-4 h-4 ${pearlsOnly ? 'fill-current' : ''}`} />
           Pearls Only
         </Button>
+        
+        {/* Favorites only toggle (for authenticated users) */}
+        {isAuthenticated && setFavoritesOnly && totalFavorites !== undefined && totalFavorites > 0 && (
+          <Button
+            variant={favoritesOnly ? 'default' : 'outline'}
+            onClick={() => setFavoritesOnly(!favoritesOnly)}
+            className="gap-2"
+          >
+            <Heart className={`w-4 h-4 ${favoritesOnly ? 'fill-current' : ''}`} />
+            Favorites ({totalFavorites})
+          </Button>
+        )}
         
         {/* Clear filters */}
         {hasFilters && (

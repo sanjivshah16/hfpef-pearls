@@ -5,7 +5,7 @@ import { ThreadCard } from '@/components/ThreadCard';
 import { Button } from '@/components/ui/button';
 import { 
   Loader2, Heart, ChevronLeft, ChevronRight, Grid, LogIn, LogOut, Shield,
-  Shuffle, ArrowDownWideNarrow
+  Shuffle, ArrowDownWideNarrow, Star
 } from 'lucide-react';
 import { getLoginUrl } from '@/const';
 import { Link } from 'wouter';
@@ -15,18 +15,25 @@ export default function SwipeHome() {
   
   const {
     threads,
+    allThreads,
     loading,
     error,
     stats,
     isAdmin,
     handleDeleteThread,
     handleDeleteTweet,
+    handleSaveTweetEdit,
+    handleToggleFavorite,
+    isFavorited,
+    favoritesOnly,
+    setFavoritesOnly,
   } = useThreads();
 
   // Current thread index
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Sort mode: 'random' or 'newest'
+  // Admin always uses 'newest' (chronological)
   const [sortMode, setSortMode] = useState<'random' | 'newest'>('random');
   
   // Shuffled indices for random mode (generated once on load)
@@ -36,9 +43,12 @@ export default function SwipeHome() {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-  // Generate shuffled indices when threads load
+  // Force chronological order for admin
+  const effectiveSortMode = isAdmin ? 'newest' : sortMode;
+
+  // Generate shuffled indices when threads load (only for non-admin)
   useEffect(() => {
-    if (threads.length > 0 && shuffledIndices.length === 0) {
+    if (!isAdmin && threads.length > 0 && shuffledIndices.length === 0) {
       const indices = Array.from({ length: threads.length }, (_, i) => i);
       // Fisher-Yates shuffle
       for (let i = indices.length - 1; i > 0; i--) {
@@ -47,20 +57,34 @@ export default function SwipeHome() {
       }
       setShuffledIndices(indices);
     }
-  }, [threads.length, shuffledIndices.length]);
+  }, [threads.length, shuffledIndices.length, isAdmin]);
+
+  // Reset shuffled indices when admin status changes
+  useEffect(() => {
+    if (isAdmin) {
+      setShuffledIndices([]);
+    }
+  }, [isAdmin]);
 
   // Get ordered threads based on sort mode
   const orderedThreads = useMemo(() => {
-    if (sortMode === 'newest') {
+    if (effectiveSortMode === 'newest') {
       return [...threads].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     // Random mode - use shuffled indices
     if (shuffledIndices.length === 0) return threads;
     return shuffledIndices.map(i => threads[i]).filter(Boolean);
-  }, [threads, sortMode, shuffledIndices]);
+  }, [threads, effectiveSortMode, shuffledIndices]);
 
   // Current thread
   const currentThread = orderedThreads[currentIndex];
+
+  // Reset index when threads change significantly
+  useEffect(() => {
+    if (currentIndex >= orderedThreads.length) {
+      setCurrentIndex(Math.max(0, orderedThreads.length - 1));
+    }
+  }, [orderedThreads.length, currentIndex]);
 
   // Navigation functions
   const goNext = useCallback(() => {
@@ -114,14 +138,16 @@ export default function SwipeHome() {
     }
   };
 
-  // Toggle sort mode
+  // Toggle sort mode (only for non-admin)
   const toggleSortMode = () => {
+    if (isAdmin) return; // Admin always uses chronological
     setSortMode(prev => prev === 'random' ? 'newest' : 'random');
     setCurrentIndex(0);
   };
 
-  // Reshuffle
+  // Reshuffle (only for non-admin)
   const reshuffle = () => {
+    if (isAdmin) return;
     const indices = Array.from({ length: threads.length }, (_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -130,6 +156,12 @@ export default function SwipeHome() {
     setShuffledIndices(indices);
     setCurrentIndex(0);
     setSortMode('random');
+  };
+
+  // Toggle favorites filter
+  const toggleFavoritesOnly = () => {
+    setFavoritesOnly(!favoritesOnly);
+    setCurrentIndex(0);
   };
 
   if (loading) {
@@ -172,7 +204,7 @@ export default function SwipeHome() {
             {isAdmin && (
               <span className="flex items-center gap-1 text-xs bg-white/20 px-2 py-1 rounded-full">
                 <Shield className="w-3 h-3" />
-                Admin
+                Edit Mode
               </span>
             )}
             
@@ -209,45 +241,76 @@ export default function SwipeHome() {
       {/* Sort controls */}
       <div className="px-4 py-2 flex items-center justify-between border-b bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <Button
-            variant={sortMode === 'newest' ? 'default' : 'outline'}
-            size="sm"
-            onClick={toggleSortMode}
-            className="text-xs"
-          >
-            <ArrowDownWideNarrow className="w-3 h-3 mr-1" />
-            {sortMode === 'newest' ? 'Newest First' : 'Random'}
-          </Button>
+          {isAdmin ? (
+            // Admin sees chronological order indicator
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <ArrowDownWideNarrow className="w-3 h-3" />
+              Chronological (Edit Mode)
+            </span>
+          ) : (
+            <>
+              <Button
+                variant={effectiveSortMode === 'newest' ? 'default' : 'outline'}
+                size="sm"
+                onClick={toggleSortMode}
+                className="text-xs"
+              >
+                <ArrowDownWideNarrow className="w-3 h-3 mr-1" />
+                {effectiveSortMode === 'newest' ? 'Newest First' : 'Random'}
+              </Button>
+              
+              {effectiveSortMode === 'random' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={reshuffle}
+                  className="text-xs"
+                >
+                  <Shuffle className="w-3 h-3 mr-1" />
+                  Reshuffle
+                </Button>
+              )}
+            </>
+          )}
           
-          {sortMode === 'random' && (
+          {/* Favorites filter (for logged in users) */}
+          {isAuthenticated && !isAdmin && stats.totalFavorites > 0 && (
             <Button
-              variant="ghost"
+              variant={favoritesOnly ? 'default' : 'outline'}
               size="sm"
-              onClick={reshuffle}
+              onClick={toggleFavoritesOnly}
               className="text-xs"
             >
-              <Shuffle className="w-3 h-3 mr-1" />
-              Reshuffle
+              <Star className={`w-3 h-3 mr-1 ${favoritesOnly ? 'fill-current' : ''}`} />
+              Favorites ({stats.totalFavorites})
             </Button>
           )}
         </div>
         
         <span className="text-xs text-muted-foreground">
-          {currentIndex + 1} of {orderedThreads.length}
+          {orderedThreads.length > 0 ? `${currentIndex + 1} of ${orderedThreads.length}` : 'No threads'}
         </span>
       </div>
 
       {/* Main content - swipeable card */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {currentThread && (
+          {currentThread ? (
             <div className="max-w-2xl mx-auto">
               <ThreadCard
                 thread={currentThread}
                 isAdmin={isAdmin}
+                isAuthenticated={isAuthenticated}
+                isFavorited={isFavorited(currentThread.id)}
                 onDeleteThread={handleDeleteThread}
                 onDeleteTweet={handleDeleteTweet}
+                onSaveTweetEdit={handleSaveTweetEdit}
+                onToggleFavorite={handleToggleFavorite}
               />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <p>{favoritesOnly ? 'No favorites yet. Heart some threads to see them here!' : 'No threads available.'}</p>
             </div>
           )}
         </div>
@@ -260,7 +323,7 @@ export default function SwipeHome() {
             variant="outline"
             size="lg"
             onClick={goPrev}
-            disabled={currentIndex === 0}
+            disabled={currentIndex === 0 || orderedThreads.length === 0}
             className="flex-1 mr-2"
           >
             <ChevronLeft className="w-5 h-5 mr-1" />
@@ -271,7 +334,7 @@ export default function SwipeHome() {
             variant="outline"
             size="lg"
             onClick={goNext}
-            disabled={currentIndex >= orderedThreads.length - 1}
+            disabled={currentIndex >= orderedThreads.length - 1 || orderedThreads.length === 0}
             className="flex-1 ml-2"
           >
             Next

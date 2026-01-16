@@ -1,19 +1,33 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MessageCircle, ChevronDown, ChevronUp, Play, Image as ImageIcon, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar, MessageCircle, ChevronDown, ChevronUp, Play, Image as ImageIcon, X, Heart, Edit2, Check, RotateCcw } from 'lucide-react';
 import type { Thread, Tweet, Media } from '@/types/thread';
 
 interface ThreadCardProps {
   thread: Thread;
   isAdmin?: boolean;
+  isAuthenticated?: boolean;
+  isFavorited?: boolean;
   onDeleteThread?: (threadId: string) => void;
   onDeleteTweet?: (threadId: string, tweetIndex: number) => void;
+  onSaveTweetEdit?: (threadId: string, tweetIndex: number, editedText: string | null, hiddenMedia: string[] | null) => void;
+  onToggleFavorite?: (threadId: string) => void;
+  originalTweets?: Tweet[]; // Original tweets for comparison during editing
 }
 
-function MediaItem({ media, index }: { media: Media; index: number }) {
+interface MediaItemProps {
+  media: Media;
+  index: number;
+  isAdmin?: boolean;
+  onDelete?: () => void;
+}
+
+function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
   const [error, setError] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Build the correct path
   const getMediaPath = (m: Media) => {
@@ -33,43 +47,93 @@ function MediaItem({ media, index }: { media: Media; index: number }) {
     );
   }
   
-  if (media.type === 'video') {
-    return (
-      <video 
-        controls 
-        loop
-        className="w-full rounded-lg max-h-[400px] object-contain bg-black"
-        preload="metadata"
-        onError={() => setError(true)}
-      >
-        <source src={path} type="video/mp4" />
-        Your browser does not support video playback.
-      </video>
-    );
-  }
-  
   return (
-    <img 
-      src={path}
-      alt={`Media ${index + 1}`}
-      className="w-full rounded-lg max-h-[500px] object-contain bg-muted"
-      loading="lazy"
-      onError={() => setError(true)}
-    />
+    <div className="relative group/media">
+      {/* Admin delete button for media */}
+      {isAdmin && onDelete && (
+        <div className="absolute right-2 top-2 z-10">
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-1 border">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => {
+                  onDelete();
+                  setShowDeleteConfirm(false);
+                }}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full bg-red-100 hover:bg-red-200 text-red-600 opacity-0 group-hover/media:opacity-100 transition-opacity"
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete this media"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      )}
+      
+      {media.type === 'video' ? (
+        <video 
+          controls 
+          loop
+          className="w-full rounded-lg max-h-[400px] object-contain bg-black"
+          preload="metadata"
+          onError={() => setError(true)}
+        >
+          <source src={path} type="video/mp4" />
+          Your browser does not support video playback.
+        </video>
+      ) : (
+        <img 
+          src={path}
+          alt={`Media ${index + 1}`}
+          className="w-full rounded-lg max-h-[500px] object-contain bg-muted"
+          loading="lazy"
+          onError={() => setError(true)}
+        />
+      )}
+    </div>
   );
 }
 
 interface TweetContentProps {
   tweet: Tweet;
+  originalTweet?: Tweet;
   index: number;
   isFirst: boolean;
   threadId: string;
   isAdmin?: boolean;
   onDeleteTweet?: (threadId: string, tweetIndex: number) => void;
+  onSaveTweetEdit?: (threadId: string, tweetIndex: number, editedText: string | null, hiddenMedia: string[] | null) => void;
 }
 
-function TweetContent({ tweet, index, isFirst, threadId, isAdmin, onDeleteTweet }: TweetContentProps) {
+function TweetContent({ tweet, originalTweet, index, isFirst, threadId, isAdmin, onDeleteTweet, onSaveTweetEdit }: TweetContentProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState(tweet.text);
+  const [hiddenMedia, setHiddenMedia] = useState<string[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Reset edited text when tweet changes
+  useEffect(() => {
+    setEditedText(tweet.text);
+  }, [tweet.text]);
   
   // Format the text with links
   const formatText = (text: string) => {
@@ -108,11 +172,44 @@ function TweetContent({ tweet, index, isFirst, threadId, isAdmin, onDeleteTweet 
     }
   };
   
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setEditedText(tweet.text);
+    setHiddenMedia([]);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+  
+  const handleSaveEdit = () => {
+    if (onSaveTweetEdit) {
+      const textChanged = editedText !== (originalTweet?.text || tweet.text);
+      onSaveTweetEdit(
+        threadId, 
+        index, 
+        textChanged ? editedText : null,
+        hiddenMedia.length > 0 ? hiddenMedia : null
+      );
+    }
+    setIsEditing(false);
+  };
+  
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedText(tweet.text);
+    setHiddenMedia([]);
+  };
+  
+  const handleHideMedia = (mediaPath: string) => {
+    setHiddenMedia(prev => [...prev, mediaPath]);
+  };
+  
+  // Filter out hidden media during editing
+  const visibleMedia = tweet.media.filter(m => !hiddenMedia.includes(m.path));
+  
   return (
     <div className={`relative group ${!isFirst ? 'border-l-2 border-primary/20 ml-4 pl-4' : ''}`}>
-      {/* Admin delete button for individual tweet */}
-      {isAdmin && onDeleteTweet && (
-        <div className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      {/* Admin buttons for individual tweet */}
+      {isAdmin && !isEditing && (
+        <div className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
           {showDeleteConfirm ? (
             <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-1 border">
               <Button
@@ -133,42 +230,105 @@ function TweetContent({ tweet, index, isFirst, threadId, isAdmin, onDeleteTweet 
               </Button>
             </div>
           ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-full bg-red-100 hover:bg-red-200 text-red-600"
-              onClick={() => setShowDeleteConfirm(true)}
-              title="Delete this tweet"
-            >
-              <X className="h-3 w-3" />
-            </Button>
+            <>
+              {onSaveTweetEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600"
+                  onClick={handleStartEdit}
+                  title="Edit this tweet"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+              )}
+              {onDeleteTweet && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded-full bg-red-100 hover:bg-red-200 text-red-600"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  title="Delete this tweet"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </>
           )}
         </div>
       )}
       
-      <div className="flex items-start gap-2">
-        {tweetNumber && (
-          <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-1">
-            {tweetNumber}
-          </span>
-        )}
-        <p className="text-foreground leading-relaxed whitespace-pre-wrap flex-1">
-          {formatText(cleanText)}
-        </p>
-      </div>
-      
-      {tweet.media.length > 0 && (
-        <div className="mt-3 space-y-3">
-          {tweet.media.map((m, i) => (
-            <MediaItem key={`${tweet.timestamp}-media-${i}`} media={m} index={i} />
-          ))}
+      {isEditing ? (
+        <div className="space-y-3">
+          <Textarea
+            ref={textareaRef}
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            className="min-h-[100px] text-sm"
+            placeholder="Edit tweet text..."
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSaveEdit} className="h-7">
+              <Check className="h-3 w-3 mr-1" />
+              Save
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-7">
+              Cancel
+            </Button>
+          </div>
+          
+          {/* Show media with delete option during edit */}
+          {visibleMedia.length > 0 && (
+            <div className="mt-3 space-y-3">
+              {visibleMedia.map((m, i) => (
+                <MediaItem 
+                  key={`${tweet.timestamp}-media-${i}`} 
+                  media={m} 
+                  index={i}
+                  isAdmin={true}
+                  onDelete={() => handleHideMedia(m.path)}
+                />
+              ))}
+            </div>
+          )}
         </div>
+      ) : (
+        <>
+          <div className="flex items-start gap-2">
+            {tweetNumber && (
+              <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-1">
+                {tweetNumber}
+              </span>
+            )}
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap flex-1">
+              {formatText(cleanText)}
+            </p>
+          </div>
+          
+          {tweet.media.length > 0 && (
+            <div className="mt-3 space-y-3">
+              {tweet.media.map((m, i) => (
+                <MediaItem key={`${tweet.timestamp}-media-${i}`} media={m} index={i} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-export function ThreadCard({ thread, isAdmin, onDeleteThread, onDeleteTweet }: ThreadCardProps) {
+export function ThreadCard({ 
+  thread, 
+  isAdmin, 
+  isAuthenticated,
+  isFavorited,
+  onDeleteThread, 
+  onDeleteTweet,
+  onSaveTweetEdit,
+  onToggleFavorite,
+  originalTweets,
+}: ThreadCardProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
@@ -247,6 +407,27 @@ export function ThreadCard({ thread, isAdmin, onDeleteThread, onDeleteTweet }: T
         </div>
       )}
       
+      {/* Favorite button */}
+      {isAuthenticated && onToggleFavorite && (
+        <div className="absolute right-2 top-2 z-10">
+          {!isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 rounded-full transition-all ${
+                isFavorited 
+                  ? 'bg-rose-100 text-rose-600 hover:bg-rose-200' 
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-rose-500 opacity-0 group-hover:opacity-100'
+              }`}
+              onClick={() => onToggleFavorite(thread.id)}
+              title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
+            </Button>
+          )}
+        </div>
+      )}
+      
       <CardContent className="p-0">
         {/* Header */}
         <div className="p-4 border-b bg-muted/30">
@@ -318,11 +499,13 @@ export function ThreadCard({ thread, isAdmin, onDeleteThread, onDeleteTweet }: T
             // Show only first tweet when collapsed
             <TweetContent 
               tweet={thread.tweets[0]} 
+              originalTweet={originalTweets?.[0]}
               index={0} 
               isFirst={true}
               threadId={thread.id}
               isAdmin={isAdmin}
               onDeleteTweet={onDeleteTweet}
+              onSaveTweetEdit={onSaveTweetEdit}
             />
           ) : (
             // Show all tweets
@@ -331,11 +514,13 @@ export function ThreadCard({ thread, isAdmin, onDeleteThread, onDeleteTweet }: T
                 <TweetContent 
                   key={`${thread.id}-tweet-${index}`}
                   tweet={tweet} 
+                  originalTweet={originalTweets?.[index]}
                   index={index}
                   isFirst={index === 0}
                   threadId={thread.id}
                   isAdmin={isAdmin}
                   onDeleteTweet={onDeleteTweet}
+                  onSaveTweetEdit={onSaveTweetEdit}
                 />
               ))}
             </div>
