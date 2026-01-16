@@ -30,19 +30,23 @@ export const appRouter = router({
     }),
   }),
 
-  // Admin routes for managing content
-  admin: router({
-    // Get all deleted items
-    getDeletedItems: adminProcedure.query(async () => {
+  // Public routes for content (edits visible to all users)
+  content: router({
+    // Get all deleted items (public - so all users see edited content)
+    getDeletedItems: publicProcedure.query(async () => {
       const items = await getDeletedItems();
       return items;
     }),
 
-    // Get all tweet edits
-    getTweetEdits: adminProcedure.query(async () => {
+    // Get all tweet edits (public - so all users see edited content)
+    getTweetEdits: publicProcedure.query(async () => {
       const edits = await getAllTweetEdits();
       return edits;
     }),
+  }),
+
+  // Admin routes for managing content
+  admin: router({
 
     // Delete an entire thread
     deleteThread: adminProcedure

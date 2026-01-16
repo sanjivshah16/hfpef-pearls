@@ -51,3 +51,7 @@
 # Font Update
 
 - [x] Change title font from Space Grotesk to IBM Plex Sans
+
+# Bug Fix - Edits Not Visible to Regular Users
+
+- [x] Fix: edits/deletions made in admin mode should be visible to all users (not just authenticated)

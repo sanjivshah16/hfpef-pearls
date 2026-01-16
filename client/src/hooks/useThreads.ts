@@ -38,17 +38,11 @@ export function useThreads() {
   const [pearlsOnly, setPearlsOnly] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
 
-  // Get deleted items from API (only for admins)
-  const { data: deletedItems, refetch: refetchDeletedItems } = trpc.admin.getDeletedItems.useQuery(
-    undefined,
-    { enabled: isAdmin }
-  );
+  // Get deleted items from API (public - all users see edited content)
+  const { data: deletedItems, refetch: refetchDeletedItems } = trpc.content.getDeletedItems.useQuery();
 
-  // Get tweet edits from API (only for admins)
-  const { data: tweetEdits, refetch: refetchTweetEdits } = trpc.admin.getTweetEdits.useQuery(
-    undefined,
-    { enabled: isAdmin }
-  );
+  // Get tweet edits from API (public - all users see edited content)
+  const { data: tweetEdits, refetch: refetchTweetEdits } = trpc.content.getTweetEdits.useQuery();
 
   // Get user favorites
   const { data: favorites, refetch: refetchFavorites } = trpc.favorites.list.useQuery(
