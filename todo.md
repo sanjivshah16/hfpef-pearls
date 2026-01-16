@@ -30,3 +30,20 @@
 # User Features
 
 - [x] Add favorites/bookmark feature for users
+
+# Bug Fixes and UI Improvements
+
+- [ ] Fix database persistence - edits/deletions should persist permanently across reloads
+- [ ] Edit mode: chronological should be oldest first
+- [ ] User mode: chronological should be newest first
+- [ ] Replace Random/Newest buttons with a slider toggle
+- [ ] Header: consistent fixed height
+- [ ] Header: Space Grotesk font for "HFpEF Pearls"
+- [ ] Header: Northwestern purple color, no gradient
+
+# Answer Field Feature
+
+- [x] Add "answer" field to JSON schema (text and media)
+- [x] Update TypeScript types for answer field
+- [x] Remove expand/collapse functionality - show all tweets expanded
+- [x] Add "Answer" button that reveals hidden answer content when clicked

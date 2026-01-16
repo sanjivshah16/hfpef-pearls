@@ -11,6 +11,12 @@ export interface Tweet {
   media: Media[];
 }
 
+// Answer can contain text and/or media
+export interface Answer {
+  text?: string;
+  media?: Media[];
+}
+
 export interface Thread {
   id: string;
   type: 'thread' | 'single';
@@ -21,6 +27,8 @@ export interface Thread {
   categories: string[];
   media: Media[];
   tweets: Tweet[];
+  // Optional answer field - shown only when user clicks "Answer" button
+  answer?: Answer;
 }
 
 export type Category = 

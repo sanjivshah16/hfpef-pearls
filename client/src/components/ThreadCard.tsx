@@ -3,8 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, MessageCircle, ChevronDown, ChevronUp, Play, Image as ImageIcon, X, Heart, Edit2, Check, RotateCcw } from 'lucide-react';
-import type { Thread, Tweet, Media } from '@/types/thread';
+import { Calendar, MessageCircle, Play, Image as ImageIcon, X, Heart, Edit2, Check, Eye } from 'lucide-react';
+import type { Thread, Tweet, Media, Answer } from '@/types/thread';
 
 interface ThreadCardProps {
   thread: Thread;
@@ -318,6 +318,88 @@ function TweetContent({ tweet, originalTweet, index, isFirst, threadId, isAdmin,
   );
 }
 
+// Answer section component
+interface AnswerSectionProps {
+  answer: Answer;
+}
+
+function AnswerSection({ answer }: AnswerSectionProps) {
+  const [showAnswer, setShowAnswer] = useState(false);
+  
+  const hasContent = answer.text || (answer.media && answer.media.length > 0);
+  
+  if (!hasContent) return null;
+  
+  // Format the text with links
+  const formatText = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a 
+            key={i} 
+            href={part} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-primary hover:underline break-all"
+          >
+            {part.length > 50 ? part.substring(0, 50) + '...' : part}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+  
+  return (
+    <div className="mt-4 pt-4 border-t border-dashed border-primary/30">
+      {!showAnswer ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAnswer(true)}
+          className="w-full bg-primary/5 hover:bg-primary/10 border-primary/30 text-primary"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          Show Answer
+        </Button>
+      ) : (
+        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <Eye className="w-4 h-4" />
+            Answer
+          </div>
+          
+          {answer.text && (
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+              {formatText(answer.text)}
+            </p>
+          )}
+          
+          {answer.media && answer.media.length > 0 && (
+            <div className="space-y-3">
+              {answer.media.map((m, i) => (
+                <MediaItem key={`answer-media-${i}`} media={m} index={i} />
+              ))}
+            </div>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAnswer(false)}
+            className="text-xs text-muted-foreground"
+          >
+            Hide Answer
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ThreadCard({ 
   thread, 
   isAdmin, 
@@ -329,7 +411,6 @@ export function ThreadCard({
   onToggleFavorite,
   originalTweets,
 }: ThreadCardProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const formatDate = (dateStr: string) => {
@@ -469,73 +550,29 @@ export function ThreadCard({
                 </span>
               )}
             </div>
-            
-            {thread.tweet_count > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCollapsed(!collapsed)}
-                className="text-xs"
-              >
-                {collapsed ? (
-                  <>
-                    <ChevronDown className="w-4 h-4 mr-1" />
-                    Expand
-                  </>
-                ) : (
-                  <>
-                    <ChevronUp className="w-4 h-4 mr-1" />
-                    Collapse
-                  </>
-                )}
-              </Button>
-            )}
           </div>
         </div>
         
-        {/* Content */}
+        {/* Content - always show all tweets expanded */}
         <div className="p-4">
-          {collapsed ? (
-            // Show only first tweet when collapsed
-            <TweetContent 
-              tweet={thread.tweets[0]} 
-              originalTweet={originalTweets?.[0]}
-              index={0} 
-              isFirst={true}
-              threadId={thread.id}
-              isAdmin={isAdmin}
-              onDeleteTweet={onDeleteTweet}
-              onSaveTweetEdit={onSaveTweetEdit}
-            />
-          ) : (
-            // Show all tweets
-            <div className="space-y-4">
-              {thread.tweets.map((tweet, index) => (
-                <TweetContent 
-                  key={`${thread.id}-tweet-${index}`}
-                  tweet={tweet} 
-                  originalTweet={originalTweets?.[index]}
-                  index={index}
-                  isFirst={index === 0}
-                  threadId={thread.id}
-                  isAdmin={isAdmin}
-                  onDeleteTweet={onDeleteTweet}
-                  onSaveTweetEdit={onSaveTweetEdit}
-                />
-              ))}
-            </div>
-          )}
+          <div className="space-y-4">
+            {thread.tweets.map((tweet, index) => (
+              <TweetContent 
+                key={`${thread.id}-tweet-${index}`}
+                tweet={tweet} 
+                originalTweet={originalTweets?.[index]}
+                index={index}
+                isFirst={index === 0}
+                threadId={thread.id}
+                isAdmin={isAdmin}
+                onDeleteTweet={onDeleteTweet}
+                onSaveTweetEdit={onSaveTweetEdit}
+              />
+            ))}
+          </div>
           
-          {collapsed && thread.tweet_count > 1 && (
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => setCollapsed(false)}
-              className="mt-2 p-0 h-auto text-primary"
-            >
-              Show all {thread.tweet_count} posts
-            </Button>
-          )}
+          {/* Answer section - only shown if answer exists */}
+          {thread.answer && <AnswerSection answer={thread.answer} />}
         </div>
       </CardContent>
     </Card>
