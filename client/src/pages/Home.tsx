@@ -14,7 +14,7 @@ import { FilterBar } from '@/components/FilterBar';
 import { TweetCard } from '@/components/TweetCard';
 import { MediaLightbox } from '@/components/MediaLightbox';
 import { Loader2, Inbox } from 'lucide-react';
-import type { Tweet } from '@/types/tweet';
+import type { TweetMedia } from '@/types/tweet';
 
 export default function Home() {
   const {
@@ -30,16 +30,16 @@ export default function Home() {
     resetFilters,
   } = useTweets();
 
-  const [lightboxTweet, setLightboxTweet] = useState<Tweet | null>(null);
+  const [lightboxMedia, setLightboxMedia] = useState<TweetMedia[] | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const handleMediaClick = (tweet: Tweet, mediaIndex: number) => {
-    setLightboxTweet(tweet);
+  const handleMediaClick = (media: TweetMedia[], mediaIndex: number) => {
+    setLightboxMedia(media);
     setLightboxIndex(mediaIndex);
   };
 
   const closeLightbox = () => {
-    setLightboxTweet(null);
+    setLightboxMedia(null);
   };
 
   if (loading) {
@@ -81,49 +81,52 @@ export default function Home() {
       />
 
       {/* Main content */}
-      <main className="container py-6">
-        {/* Results count */}
-        <div className="mb-6">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{tweets.length}</span>{' '}
-            {tweets.length === 1 ? 'post' : 'posts'}
-            {filters.showPearlsOnly && ' (pearls only)'}
-            {filters.category !== 'All' && ` in ${filters.category}`}
-            {filters.year && ` from ${filters.year}`}
-            {filters.searchQuery && ` matching "${filters.searchQuery}"`}
-          </p>
-        </div>
-
-        {/* Tweet grid */}
-        {tweets.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {tweets.map((tweet) => (
-              <TweetCard
-                key={tweet.id}
-                tweet={tweet}
-                onMediaClick={handleMediaClick}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16">
-            <Inbox className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium text-foreground mb-2">No posts found</p>
-            <p className="text-muted-foreground mb-4">
-              Try adjusting your filters or search query
+      <main>
+        <div className="container py-6">
+          {/* Results count */}
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-medium text-foreground">{tweets.length}</span>{' '}
+              {tweets.length === 1 ? 'item' : 'items'}
+              {stats.threads > 0 && ` (including ${stats.threads} threads)`}
+              {filters.showPearlsOnly && ' · pearls only'}
+              {filters.category !== 'All' && ` · ${filters.category}`}
+              {filters.year && ` · ${filters.year}`}
+              {filters.searchQuery && ` · "${filters.searchQuery}"`}
             </p>
-            <button
-              onClick={resetFilters}
-              className="text-primary hover:underline"
-            >
-              Clear all filters
-            </button>
           </div>
-        )}
+
+          {/* Tweet grid */}
+          {tweets.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {tweets.map((tweet) => (
+                <TweetCard
+                  key={tweet.id}
+                  tweet={tweet}
+                  onMediaClick={handleMediaClick}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Inbox className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-lg font-medium text-foreground mb-2">No posts found</p>
+              <p className="text-muted-foreground mb-4">
+                Try adjusting your filters or search query
+              </p>
+              <button
+                onClick={resetFilters}
+                className="text-primary hover:underline"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 mt-8">
+      <footer className="border-t border-border py-6 mt-8">
         <div className="container text-center">
           <p className="text-sm text-muted-foreground">
             Educational content from{' '}
@@ -137,7 +140,7 @@ export default function Home() {
             </a>
             {' '}· Sanjiv J. Shah, MD
           </p>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground mt-1">
             Northwestern HFpEF Program · Chicago, IL
           </p>
         </div>
@@ -145,7 +148,7 @@ export default function Home() {
 
       {/* Media lightbox */}
       <MediaLightbox
-        tweet={lightboxTweet}
+        media={lightboxMedia}
         initialIndex={lightboxIndex}
         onClose={closeLightbox}
       />

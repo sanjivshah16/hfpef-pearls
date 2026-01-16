@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import type { Tweet } from '@/types/tweet';
+import type { TweetMedia } from '@/types/tweet';
 import { cn } from '@/lib/utils';
 
 interface MediaLightboxProps {
-  tweet: Tweet | null;
+  media: TweetMedia[] | null;
   initialIndex: number;
   onClose: () => void;
 }
 
-export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxProps) {
+export function MediaLightbox({ media, initialIndex, onClose }: MediaLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
   useEffect(() => {
@@ -18,17 +18,17 @@ export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxPro
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!tweet) return;
+      if (!media) return;
       
       if (e.key === 'Escape') {
         onClose();
       } else if (e.key === 'ArrowLeft') {
-        setCurrentIndex((prev) => (prev - 1 + tweet.media.length) % tweet.media.length);
+        setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
       } else if (e.key === 'ArrowRight') {
-        setCurrentIndex((prev) => (prev + 1) % tweet.media.length);
+        setCurrentIndex((prev) => (prev + 1) % media.length);
       }
     },
-    [tweet, onClose]
+    [media, onClose]
   );
 
   useEffect(() => {
@@ -41,16 +41,19 @@ export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxPro
     };
   }, [handleKeyDown]);
 
-  if (!tweet || tweet.media.length === 0) return null;
+  if (!media || media.length === 0) return null;
 
-  const currentMedia = tweet.media[currentIndex];
-  const hasMultiple = tweet.media.length > 1;
+  const currentMedia = media[currentIndex];
+  const hasMultiple = media.length > 1;
 
   const getMediaUrl = () => {
-    if (currentMedia.type === 'photo') {
-      return currentMedia.local_path ? `/${currentMedia.local_path}` : currentMedia.media_url;
+    if (currentMedia.local_path) {
+      return `/${currentMedia.local_path}`;
     }
-    return currentMedia.local_path ? `/${currentMedia.local_path}` : currentMedia.video_url;
+    if (currentMedia.type === 'photo') {
+      return currentMedia.media_url;
+    }
+    return currentMedia.video_url || currentMedia.media_url;
   };
 
   return (
@@ -84,7 +87,7 @@ export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxPro
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentIndex((prev) => (prev - 1 + tweet.media.length) % tweet.media.length);
+              setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
             }}
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition-colors z-10"
             aria-label="Previous"
@@ -94,7 +97,7 @@ export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxPro
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentIndex((prev) => (prev + 1) % tweet.media.length);
+              setCurrentIndex((prev) => (prev + 1) % media.length);
             }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition-colors z-10"
             aria-label="Next"
@@ -114,6 +117,12 @@ export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxPro
             src={getMediaUrl()}
             alt="Full size media"
             className="max-w-full max-h-[90vh] object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (target.src !== currentMedia.media_url) {
+                target.src = currentMedia.media_url;
+              }
+            }}
           />
         ) : (
           <video
@@ -130,7 +139,7 @@ export function MediaLightbox({ tweet, initialIndex, onClose }: MediaLightboxPro
       {/* Media counter */}
       {hasMultiple && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          {tweet.media.map((_, idx) => (
+          {media.map((_: TweetMedia, idx: number) => (
             <button
               key={idx}
               onClick={(e) => {

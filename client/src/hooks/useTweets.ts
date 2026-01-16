@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Tweet, FilterState, CategoryType } from '@/types/tweet';
+import type { TweetItem, FilterState, CategoryType } from '@/types/tweet';
 
 export function useTweets() {
-  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [tweets, setTweets] = useState<TweetItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
@@ -15,9 +15,9 @@ export function useTweets() {
   useEffect(() => {
     async function loadTweets() {
       try {
-        const response = await fetch('/tweets.json');
+        const response = await fetch('/tweets_processed.json');
         if (!response.ok) throw new Error('Failed to load tweets');
-        const data: Tweet[] = await response.json();
+        const data: TweetItem[] = await response.json();
         setTweets(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -44,11 +44,23 @@ export function useTweets() {
       // Search filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
-        const matchesText = tweet.text.toLowerCase().includes(query);
-        const matchesHashtag = tweet.hashtags.some((tag) =>
-          tag.toLowerCase().includes(query)
-        );
-        if (!matchesText && !matchesHashtag) return false;
+        
+        // For threads, search in all tweet texts
+        if (tweet.type === 'thread') {
+          const matchesText = tweet.tweets.some((t) => 
+            t.text.toLowerCase().includes(query)
+          );
+          const matchesHashtag = tweet.hashtags.some((tag: string) =>
+            tag.toLowerCase().includes(query)
+          );
+          if (!matchesText && !matchesHashtag) return false;
+        } else {
+          const matchesText = tweet.text.toLowerCase().includes(query);
+          const matchesHashtag = tweet.hashtags.some((tag: string) =>
+            tag.toLowerCase().includes(query)
+          );
+          if (!matchesText && !matchesHashtag) return false;
+        }
       }
 
       return true;
@@ -80,10 +92,20 @@ export function useTweets() {
       return acc;
     }, {} as Record<CategoryType, number>);
 
+    // Count total tweets including thread contents
+    const totalTweets = tweets.reduce((sum, t) => {
+      if (t.type === 'thread') {
+        return sum + t.tweet_count;
+      }
+      return sum + 1;
+    }, 0);
+
     return {
       total: tweets.length,
+      totalTweets,
       pearls: tweets.filter((t) => t.is_pearl).length,
-      withMedia: tweets.filter((t) => t.media.length > 0).length,
+      withMedia: tweets.filter((t) => t.media && t.media.length > 0).length,
+      threads: tweets.filter((t) => t.type === 'thread').length,
       years,
       categories,
       categoryCounts,
