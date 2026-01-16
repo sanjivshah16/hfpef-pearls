@@ -187,7 +187,7 @@ function SingleTweetContent({
 }
 
 export function TweetCard({ tweet, onMediaClick }: TweetCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -353,12 +353,12 @@ export function TweetCard({ tweet, onMediaClick }: TweetCardProps) {
           {tweet.categories
             .filter((cat: string) => cat !== 'Pearl' && cat !== 'General')
             .map((category: string) => (
-              <span key={category} className="category-tag">
+              <span key={`cat-${category}`} className="category-tag">
                 {category}
               </span>
             ))}
-          {tweet.hashtags && tweet.hashtags.slice(0, 2).map((tag: string) => (
-            <span key={tag} className="text-xs text-muted-foreground">
+          {tweet.hashtags && tweet.hashtags.slice(0, 2).map((tag: string, idx: number) => (
+            <span key={`tag-${tweet.id}-${idx}`} className="text-xs text-muted-foreground">
               #{tag}
             </span>
           ))}
