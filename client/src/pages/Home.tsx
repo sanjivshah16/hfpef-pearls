@@ -66,7 +66,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Heart className="w-8 h-8 fill-white" />
-              <h1 className="text-3xl font-bold font-['Space_Grotesk',sans-serif]">HFpEF Pearls</h1>
+              <h1 className="text-3xl font-bold font-['IBM_Plex_Sans',sans-serif]">HFpEF Pearls</h1>
             </div>
             
             {/* Nav buttons */}

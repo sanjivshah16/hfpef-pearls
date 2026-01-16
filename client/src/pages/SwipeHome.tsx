@@ -202,7 +202,7 @@ export default function SwipeHome() {
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <Heart className="w-6 h-6 fill-white" />
-            <h1 className="text-xl font-bold font-['Space_Grotesk',sans-serif]">HFpEF Pearls</h1>
+            <h1 className="text-xl font-bold font-['IBM_Plex_Sans',sans-serif]">HFpEF Pearls</h1>
           </div>
           
           <div className="flex items-center gap-2">

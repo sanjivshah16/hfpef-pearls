@@ -47,3 +47,7 @@
 - [x] Update TypeScript types for answer field
 - [x] Remove expand/collapse functionality - show all tweets expanded
 - [x] Add "Answer" button that reveals hidden answer content when clicked
+
+# Font Update
+
+- [x] Change title font from Space Grotesk to IBM Plex Sans
