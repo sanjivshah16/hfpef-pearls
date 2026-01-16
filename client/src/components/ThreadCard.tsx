@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MessageCircle, ChevronDown, ChevronUp, Play, Image as ImageIcon } from 'lucide-react';
+import { Calendar, MessageCircle, ChevronDown, ChevronUp, Play, Image as ImageIcon, X } from 'lucide-react';
 import type { Thread, Tweet, Media } from '@/types/thread';
 
 interface ThreadCardProps {
   thread: Thread;
+  isAdmin?: boolean;
+  onDeleteThread?: (threadId: string) => void;
+  onDeleteTweet?: (threadId: string, tweetIndex: number) => void;
 }
 
 function MediaItem({ media, index }: { media: Media; index: number }) {
@@ -34,6 +37,7 @@ function MediaItem({ media, index }: { media: Media; index: number }) {
     return (
       <video 
         controls 
+        loop
         className="w-full rounded-lg max-h-[400px] object-contain bg-black"
         preload="metadata"
         onError={() => setError(true)}
@@ -55,7 +59,18 @@ function MediaItem({ media, index }: { media: Media; index: number }) {
   );
 }
 
-function TweetContent({ tweet, index, isFirst }: { tweet: Tweet; index: number; isFirst: boolean }) {
+interface TweetContentProps {
+  tweet: Tweet;
+  index: number;
+  isFirst: boolean;
+  threadId: string;
+  isAdmin?: boolean;
+  onDeleteTweet?: (threadId: string, tweetIndex: number) => void;
+}
+
+function TweetContent({ tweet, index, isFirst, threadId, isAdmin, onDeleteTweet }: TweetContentProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
   // Format the text with links
   const formatText = (text: string) => {
     // Convert URLs to links
@@ -81,22 +96,66 @@ function TweetContent({ tweet, index, isFirst }: { tweet: Tweet; index: number; 
   };
   
   // Check if this tweet starts with a number (like "1/", "2/", etc.)
-  const numberMatch = tweet.text.match(/^(\d+)\//);
+  const numberMatch = tweet.text.match(/^(\d+)\/\s*/);
   const tweetNumber = numberMatch ? numberMatch[1] : null;
+  // Remove the number prefix from the text
+  const cleanText = numberMatch ? tweet.text.replace(/^\d+\/\s*/, '') : tweet.text;
+  
+  const handleDelete = () => {
+    if (onDeleteTweet) {
+      onDeleteTweet(threadId, index);
+      setShowDeleteConfirm(false);
+    }
+  };
   
   return (
-    <div className={`${!isFirst ? 'border-l-2 border-primary/20 ml-4 pl-4' : ''}`}>
-      {tweetNumber && (
-        <div className="flex items-center gap-2 mb-2">
-          <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-            {tweetNumber}
-          </span>
+    <div className={`relative group ${!isFirst ? 'border-l-2 border-primary/20 ml-4 pl-4' : ''}`}>
+      {/* Admin delete button for individual tweet */}
+      {isAdmin && onDeleteTweet && (
+        <div className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-1 border">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full bg-red-100 hover:bg-red-200 text-red-600"
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete this tweet"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       )}
       
-      <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-        {formatText(tweet.text)}
-      </p>
+      <div className="flex items-start gap-2">
+        {tweetNumber && (
+          <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-1">
+            {tweetNumber}
+          </span>
+        )}
+        <p className="text-foreground leading-relaxed whitespace-pre-wrap flex-1">
+          {formatText(cleanText)}
+        </p>
+      </div>
       
       {tweet.media.length > 0 && (
         <div className="mt-3 space-y-3">
@@ -109,8 +168,9 @@ function TweetContent({ tweet, index, isFirst }: { tweet: Tweet; index: number; 
   );
 }
 
-export function ThreadCard({ thread }: ThreadCardProps) {
+export function ThreadCard({ thread, isAdmin, onDeleteThread, onDeleteTweet }: ThreadCardProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -141,8 +201,52 @@ export function ThreadCard({ thread }: ThreadCardProps) {
   const hasVideo = thread.media.some(m => m.type === 'video');
   const imageCount = thread.media.filter(m => m.type === 'image').length;
   
+  const handleDeleteThread = () => {
+    if (onDeleteThread) {
+      onDeleteThread(thread.id);
+      setShowDeleteConfirm(false);
+    }
+  };
+  
   return (
-    <Card className="overflow-hidden transition-all duration-200 hover:shadow-lg">
+    <Card className="overflow-hidden transition-all duration-200 hover:shadow-lg relative group">
+      {/* Admin delete button for entire thread */}
+      {isAdmin && onDeleteThread && (
+        <div className="absolute right-2 top-2 z-20">
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 border">
+              <span className="text-xs text-muted-foreground mr-2">Delete thread?</span>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={handleDeleteThread}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete this thread"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+      
       <CardContent className="p-0">
         {/* Header */}
         <div className="p-4 border-b bg-muted/30">
@@ -216,6 +320,9 @@ export function ThreadCard({ thread }: ThreadCardProps) {
               tweet={thread.tweets[0]} 
               index={0} 
               isFirst={true}
+              threadId={thread.id}
+              isAdmin={isAdmin}
+              onDeleteTweet={onDeleteTweet}
             />
           ) : (
             // Show all tweets
@@ -226,6 +333,9 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   tweet={tweet} 
                   index={index}
                   isFirst={index === 0}
+                  threadId={thread.id}
+                  isAdmin={isAdmin}
+                  onDeleteTweet={onDeleteTweet}
                 />
               ))}
             </div>

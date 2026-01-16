@@ -1,10 +1,17 @@
+import { useAuth } from '@/_core/hooks/useAuth';
 import { useThreads } from '@/hooks/useThreads';
 import { ThreadCard } from '@/components/ThreadCard';
 import { ThreadFilterBar } from '@/components/ThreadFilterBar';
-import { Loader2, Heart, BookOpen, FileText, Image } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Heart, BookOpen, FileText, Image, LogIn, LogOut, Shield, Layers } from 'lucide-react';
+import { getLoginUrl } from '@/const';
+import { Link } from 'wouter';
 import type { Category } from '@/types/thread';
 
 export default function Home() {
+  // Auth state for admin features
+  const { user, isAuthenticated, logout } = useAuth();
+  
   const {
     threads,
     loading,
@@ -20,6 +27,9 @@ export default function Home() {
     setSelectedYear,
     pearlsOnly,
     setPearlsOnly,
+    isAdmin,
+    handleDeleteThread,
+    handleDeleteTweet,
   } = useThreads();
 
   if (loading) {
@@ -48,13 +58,63 @@ export default function Home() {
       {/* Header */}
       <header className="bg-gradient-to-r from-rose-600 to-rose-800 text-white">
         <div className="container py-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Heart className="w-8 h-8 fill-white" />
-            <h1 className="text-3xl font-bold font-display">HFpEF Pearls</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Heart className="w-8 h-8 fill-white" />
+              <h1 className="text-3xl font-bold font-display">HFpEF Pearls</h1>
+            </div>
+            
+            {/* Nav buttons */}
+            <div className="flex items-center gap-2">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                  <Layers className="w-4 h-4 mr-1" />
+                  Card View
+                </Button>
+              </Link>
+              
+              {isAuthenticated ? (
+                <>
+                  {isAdmin && (
+                    <span className="flex items-center gap-1 text-xs bg-white/20 px-2 py-1 rounded-full">
+                      <Shield className="w-3 h-3" />
+                      Admin Mode
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20"
+                    onClick={() => logout()}
+                  >
+                    <LogOut className="w-4 h-4 mr-1" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
+                  onClick={() => window.location.href = getLoginUrl()}
+                >
+                  <LogIn className="w-4 h-4 mr-1" />
+                  Admin Login
+                </Button>
+              )}
+            </div>
           </div>
+          
           <p className="text-rose-100 text-lg max-w-2xl">
             Educational content on Heart Failure with Preserved Ejection Fraction from @HFpEF
           </p>
+          
+          {/* Admin notice */}
+          {isAdmin && (
+            <div className="mt-4 bg-white/10 rounded-lg px-4 py-2 text-sm">
+              <strong>Admin Mode:</strong> Hover over threads or tweets to see delete buttons. Deletions are saved automatically.
+            </div>
+          )}
           
           {/* Stats */}
           <div className="flex flex-wrap gap-6 mt-6">
@@ -106,7 +166,13 @@ export default function Home() {
         ) : (
           <div className="space-y-6">
             {threads.map(thread => (
-              <ThreadCard key={thread.id} thread={thread} />
+              <ThreadCard 
+                key={thread.id} 
+                thread={thread}
+                isAdmin={isAdmin}
+                onDeleteThread={handleDeleteThread}
+                onDeleteTweet={handleDeleteTweet}
+              />
             ))}
           </div>
         )}
