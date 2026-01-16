@@ -3,9 +3,10 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { useThreads } from '@/hooks/useThreads';
 import { ThreadCard } from '@/components/ThreadCard';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { 
   Loader2, Heart, ChevronLeft, ChevronRight, Grid, LogIn, LogOut, Shield,
-  Shuffle, ArrowDownWideNarrow, Star
+  Shuffle, Star
 } from 'lucide-react';
 import { getLoginUrl } from '@/const';
 import { Link } from 'wouter';
@@ -33,7 +34,7 @@ export default function SwipeHome() {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Sort mode: 'random' or 'newest'
-  // Admin always uses 'newest' (chronological)
+  // Admin always uses chronological (oldest first for editing)
   const [sortMode, setSortMode] = useState<'random' | 'newest'>('random');
   
   // Shuffled indices for random mode (generated once on load)
@@ -42,9 +43,6 @@ export default function SwipeHome() {
   // Touch handling for swipe
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  // Force chronological order for admin
-  const effectiveSortMode = isAdmin ? 'newest' : sortMode;
 
   // Generate shuffled indices when threads load (only for non-admin)
   useEffect(() => {
@@ -68,13 +66,20 @@ export default function SwipeHome() {
 
   // Get ordered threads based on sort mode
   const orderedThreads = useMemo(() => {
-    if (effectiveSortMode === 'newest') {
+    if (isAdmin) {
+      // Admin: chronological oldest first (for editing in order)
+      return [...threads].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+    
+    if (sortMode === 'newest') {
+      // User: newest first
       return [...threads].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
+    
     // Random mode - use shuffled indices
     if (shuffledIndices.length === 0) return threads;
     return shuffledIndices.map(i => threads[i]).filter(Boolean);
-  }, [threads, effectiveSortMode, shuffledIndices]);
+  }, [threads, sortMode, shuffledIndices, isAdmin]);
 
   // Current thread
   const currentThread = orderedThreads[currentIndex];
@@ -139,9 +144,9 @@ export default function SwipeHome() {
   };
 
   // Toggle sort mode (only for non-admin)
-  const toggleSortMode = () => {
+  const toggleSortMode = (checked: boolean) => {
     if (isAdmin) return; // Admin always uses chronological
-    setSortMode(prev => prev === 'random' ? 'newest' : 'random');
+    setSortMode(checked ? 'newest' : 'random');
     setCurrentIndex(0);
   };
 
@@ -166,9 +171,9 @@ export default function SwipeHome() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-white">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-rose-600" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#4E2A84]" />
           <p className="mt-4 text-muted-foreground">Loading HFpEF Pearls...</p>
         </div>
       </div>
@@ -187,17 +192,17 @@ export default function SwipeHome() {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-rose-50 to-white flex flex-col"
+      className="min-h-screen bg-gray-50 flex flex-col"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Header */}
-      <header className="bg-gradient-to-r from-rose-600 to-rose-800 text-white px-4 py-3">
-        <div className="flex items-center justify-between">
+      {/* Header - Northwestern Purple, fixed height, no gradient */}
+      <header className="bg-[#4E2A84] text-white px-4 py-3 h-14 flex items-center">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <Heart className="w-6 h-6 fill-white" />
-            <h1 className="text-xl font-bold">HFpEF Pearls</h1>
+            <h1 className="text-xl font-bold font-['Space_Grotesk',sans-serif]">HFpEF Pearls</h1>
           </div>
           
           <div className="flex items-center gap-2">
@@ -239,32 +244,36 @@ export default function SwipeHome() {
       </header>
 
       {/* Sort controls */}
-      <div className="px-4 py-2 flex items-center justify-between border-b bg-white/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
+      <div className="px-4 py-2 flex items-center justify-between border-b bg-white h-12">
+        <div className="flex items-center gap-3">
           {isAdmin ? (
-            // Admin sees chronological order indicator
+            // Admin sees chronological order indicator (oldest first)
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <ArrowDownWideNarrow className="w-3 h-3" />
-              Chronological (Edit Mode)
+              Chronological (Oldest First) - Edit Mode
             </span>
           ) : (
             <>
-              <Button
-                variant={effectiveSortMode === 'newest' ? 'default' : 'outline'}
-                size="sm"
-                onClick={toggleSortMode}
-                className="text-xs"
-              >
-                <ArrowDownWideNarrow className="w-3 h-3 mr-1" />
-                {effectiveSortMode === 'newest' ? 'Newest First' : 'Random'}
-              </Button>
+              {/* Slider toggle for Random/Newest */}
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${sortMode === 'random' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Random
+                </span>
+                <Switch
+                  checked={sortMode === 'newest'}
+                  onCheckedChange={toggleSortMode}
+                  className="data-[state=checked]:bg-[#4E2A84]"
+                />
+                <span className={`text-xs ${sortMode === 'newest' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Newest
+                </span>
+              </div>
               
-              {effectiveSortMode === 'random' && (
+              {sortMode === 'random' && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={reshuffle}
-                  className="text-xs"
+                  className="text-xs h-7"
                 >
                   <Shuffle className="w-3 h-3 mr-1" />
                   Reshuffle
@@ -279,7 +288,7 @@ export default function SwipeHome() {
               variant={favoritesOnly ? 'default' : 'outline'}
               size="sm"
               onClick={toggleFavoritesOnly}
-              className="text-xs"
+              className="text-xs h-7"
             >
               <Star className={`w-3 h-3 mr-1 ${favoritesOnly ? 'fill-current' : ''}`} />
               Favorites ({stats.totalFavorites})
@@ -317,7 +326,7 @@ export default function SwipeHome() {
       </main>
 
       {/* Navigation controls */}
-      <div className="px-4 py-3 border-t bg-white/80 backdrop-blur-sm">
+      <div className="px-4 py-3 border-t bg-white">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <Button
             variant="outline"

@@ -33,13 +33,13 @@
 
 # Bug Fixes and UI Improvements
 
-- [ ] Fix database persistence - edits/deletions should persist permanently across reloads
-- [ ] Edit mode: chronological should be oldest first
-- [ ] User mode: chronological should be newest first
-- [ ] Replace Random/Newest buttons with a slider toggle
-- [ ] Header: consistent fixed height
-- [ ] Header: Space Grotesk font for "HFpEF Pearls"
-- [ ] Header: Northwestern purple color, no gradient
+- [x] Fix database persistence - edits/deletions should persist permanently across reloads
+- [x] Edit mode: chronological should be oldest first
+- [x] User mode: chronological should be newest first
+- [x] Replace Random/Newest buttons with a slider toggle
+- [x] Header: consistent fixed height
+- [x] Header: Space Grotesk font for "HFpEF Pearls"
+- [x] Header: Northwestern purple color, no gradient
 
 # Answer Field Feature
 

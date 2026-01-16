@@ -41,7 +41,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#4E2A84]" />
           <p className="mt-4 text-muted-foreground">Loading HFpEF Pearls...</p>
         </div>
       </div>
@@ -60,13 +60,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-rose-600 to-rose-800 text-white">
-        <div className="container py-8">
+      {/* Header - Northwestern Purple, no gradient */}
+      <header className="bg-[#4E2A84] text-white">
+        <div className="container py-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Heart className="w-8 h-8 fill-white" />
-              <h1 className="text-3xl font-bold font-display">HFpEF Pearls</h1>
+              <h1 className="text-3xl font-bold font-['Space_Grotesk',sans-serif]">HFpEF Pearls</h1>
             </div>
             
             {/* Nav buttons */}
@@ -110,7 +110,7 @@ export default function Home() {
             </div>
           </div>
           
-          <p className="text-rose-100 text-lg max-w-2xl">
+          <p className="text-white/80 text-lg max-w-2xl">
             Educational content on Heart Failure with Preserved Ejection Fraction from @HFpEF
           </p>
           
@@ -124,25 +124,25 @@ export default function Home() {
           {/* Stats */}
           <div className="flex flex-wrap gap-6 mt-6">
             <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-rose-200" />
-              <span className="text-rose-100">{stats.totalThreads} threads</span>
+              <FileText className="w-5 h-5 text-white/70" />
+              <span className="text-white/80">{stats.totalThreads} threads</span>
             </div>
             <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-rose-200" />
-              <span className="text-rose-100">{stats.totalTweets} posts</span>
+              <BookOpen className="w-5 h-5 text-white/70" />
+              <span className="text-white/80">{stats.totalTweets} posts</span>
             </div>
             <div className="flex items-center gap-2">
-              <Heart className="w-5 h-5 text-rose-200 fill-rose-200" />
-              <span className="text-rose-100">{stats.totalPearls} pearls</span>
+              <Heart className="w-5 h-5 text-white/70 fill-white/70" />
+              <span className="text-white/80">{stats.totalPearls} pearls</span>
             </div>
             <div className="flex items-center gap-2">
-              <Image className="w-5 h-5 text-rose-200" />
-              <span className="text-rose-100">{stats.totalWithMedia} with media</span>
+              <Image className="w-5 h-5 text-white/70" />
+              <span className="text-white/80">{stats.totalWithMedia} with media</span>
             </div>
             {isAuthenticated && stats.totalFavorites > 0 && (
               <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-rose-200 fill-rose-200" />
-                <span className="text-rose-100">{stats.totalFavorites} favorites</span>
+                <Star className="w-5 h-5 text-white/70 fill-white/70" />
+                <span className="text-white/80">{stats.totalFavorites} favorites</span>
               </div>
             )}
           </div>
