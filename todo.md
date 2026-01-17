@@ -55,3 +55,10 @@
 # Bug Fix - Edits Not Visible to Regular Users
 
 - [x] Fix: edits/deletions made in admin mode should be visible to all users (not just authenticated)
+
+# Card Header and Slider Updates
+
+- [x] Simplify card header: remove post count, image count, figure count - keep only date
+- [x] Make date span full width to prevent wrapping on mobile
+- [x] Change slider to three options: Oldest / Random / Newest (default to Oldest)
+- [x] Fix video display to show first frame instead of black thumbnail

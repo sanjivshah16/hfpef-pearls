@@ -3,7 +3,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { useThreads } from '@/hooks/useThreads';
 import { ThreadCard } from '@/components/ThreadCard';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+
 import { 
   Loader2, Heart, ChevronLeft, ChevronRight, Grid, LogIn, LogOut, Shield,
   Shuffle, Star
@@ -33,9 +33,9 @@ export default function SwipeHome() {
   // Current thread index
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Sort mode: 'random' or 'newest'
+  // Sort mode: 'oldest', 'random', or 'newest'
   // Admin always uses chronological (oldest first for editing)
-  const [sortMode, setSortMode] = useState<'random' | 'newest'>('random');
+  const [sortMode, setSortMode] = useState<'oldest' | 'random' | 'newest'>('oldest');
   
   // Shuffled indices for random mode (generated once on load)
   const [shuffledIndices, setShuffledIndices] = useState<number[]>([]);
@@ -68,6 +68,11 @@ export default function SwipeHome() {
   const orderedThreads = useMemo(() => {
     if (isAdmin) {
       // Admin: chronological oldest first (for editing in order)
+      return [...threads].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+    
+    if (sortMode === 'oldest') {
+      // User: oldest first
       return [...threads].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
     
@@ -143,10 +148,10 @@ export default function SwipeHome() {
     }
   };
 
-  // Toggle sort mode (only for non-admin)
-  const toggleSortMode = (checked: boolean) => {
+  // Set sort mode (only for non-admin)
+  const changeSortMode = (mode: 'oldest' | 'random' | 'newest') => {
     if (isAdmin) return; // Admin always uses chronological
-    setSortMode(checked ? 'newest' : 'random');
+    setSortMode(mode);
     setCurrentIndex(0);
   };
 
@@ -253,19 +258,38 @@ export default function SwipeHome() {
             </span>
           ) : (
             <>
-              {/* Slider toggle for Random/Newest */}
-              <div className="flex items-center gap-2">
-                <span className={`text-xs ${sortMode === 'random' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+              {/* Three-way sort toggle: Oldest / Random / Newest */}
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+                <button
+                  onClick={() => changeSortMode('oldest')}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    sortMode === 'oldest' 
+                      ? 'bg-[#4E2A84] text-white font-medium' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Oldest
+                </button>
+                <button
+                  onClick={() => changeSortMode('random')}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    sortMode === 'random' 
+                      ? 'bg-[#4E2A84] text-white font-medium' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
                   Random
-                </span>
-                <Switch
-                  checked={sortMode === 'newest'}
-                  onCheckedChange={toggleSortMode}
-                  className="data-[state=checked]:bg-[#4E2A84]"
-                />
-                <span className={`text-xs ${sortMode === 'newest' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                </button>
+                <button
+                  onClick={() => changeSortMode('newest')}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    sortMode === 'newest' 
+                      ? 'bg-[#4E2A84] text-white font-medium' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
                   Newest
-                </span>
+                </button>
               </div>
               
               {sortMode === 'random' && (

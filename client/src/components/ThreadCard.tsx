@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, MessageCircle, Play, Image as ImageIcon, X, Heart, Edit2, Check, Eye } from 'lucide-react';
+import { Calendar, X, Heart, Edit2, Check, Eye, Image as ImageIcon } from 'lucide-react';
 import type { Thread, Tweet, Media, Answer } from '@/types/thread';
 
 interface ThreadCardProps {
@@ -92,9 +92,15 @@ function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
         <video 
           controls 
           loop
-          className="w-full rounded-lg max-h-[400px] object-contain bg-black"
-          preload="metadata"
+          className="w-full rounded-lg max-h-[400px] object-contain bg-muted"
+          preload="auto"
+          poster={`${path}#t=0.1`}
           onError={() => setError(true)}
+          onLoadedMetadata={(e) => {
+            // Seek to first frame to show thumbnail
+            const video = e.currentTarget;
+            video.currentTime = 0.1;
+          }}
         >
           <source src={path} type="video/mp4" />
           Your browser does not support video playback.
@@ -439,9 +445,6 @@ export function ThreadCard({
     return colors[category] || colors['General'];
   };
   
-  const hasVideo = thread.media.some(m => m.type === 'video');
-  const imageCount = thread.media.filter(m => m.type === 'image').length;
-  
   const handleDeleteThread = () => {
     if (onDeleteThread) {
       onDeleteThread(thread.id);
@@ -525,31 +528,11 @@ export function ThreadCard({
             ))}
           </div>
           
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {formatDate(thread.date)}
-              </span>
-              {thread.tweet_count > 1 && (
-                <span className="flex items-center gap-1">
-                  <MessageCircle className="w-4 h-4" />
-                  {thread.tweet_count} posts
-                </span>
-              )}
-              {hasVideo && (
-                <span className="flex items-center gap-1 text-pink-600">
-                  <Play className="w-4 h-4" />
-                  Video
-                </span>
-              )}
-              {imageCount > 0 && (
-                <span className="flex items-center gap-1 text-indigo-600">
-                  <ImageIcon className="w-4 h-4" />
-                  {imageCount} {imageCount === 1 ? 'image' : 'images'}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {formatDate(thread.date)}
+            </span>
           </div>
         </div>
         
