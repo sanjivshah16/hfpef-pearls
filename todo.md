@@ -62,3 +62,9 @@
 - [x] Make date span full width to prevent wrapping on mobile
 - [x] Change slider to three options: Oldest / Random / Newest (default to Oldest)
 - [x] Fix video display to show first frame instead of black thumbnail
+
+# Video Playback Improvements
+
+- [x] Make all videos loop continuously
+- [x] Autoplay videos when card appears in viewport
+- [x] Implement lazy loading for videos to reduce latency

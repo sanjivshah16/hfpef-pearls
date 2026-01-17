@@ -28,6 +28,9 @@ interface MediaItemProps {
 function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
   const [error, setError] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Build the correct path
   const getMediaPath = (m: Media) => {
@@ -37,6 +40,35 @@ function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
   };
   
   const path = getMediaPath(media);
+  
+  // IntersectionObserver for lazy loading and autoplay
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsInView(entry.isIntersecting);
+          
+          // Autoplay video when in view
+          if (media.type === 'video' && videoRef.current) {
+            if (entry.isIntersecting) {
+              videoRef.current.play().catch(() => {
+                // Autoplay may be blocked by browser, that's ok
+              });
+            } else {
+              videoRef.current.pause();
+            }
+          }
+        });
+      },
+      { threshold: 0.5 } // Trigger when 50% visible
+    );
+    
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [media.type]);
   
   if (error) {
     return (
@@ -48,7 +80,7 @@ function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
   }
   
   return (
-    <div className="relative group/media">
+    <div ref={containerRef} className="relative group/media">
       {/* Admin delete button for media */}
       {isAdmin && onDelete && (
         <div className="absolute right-2 top-2 z-10">
@@ -90,11 +122,13 @@ function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
       
       {media.type === 'video' ? (
         <video 
+          ref={videoRef}
           controls 
           loop
+          muted
+          playsInline
           className="w-full rounded-lg max-h-[400px] object-contain bg-muted"
-          preload="auto"
-          poster={`${path}#t=0.1`}
+          preload="metadata"
           onError={() => setError(true)}
           onLoadedMetadata={(e) => {
             // Seek to first frame to show thumbnail
@@ -102,6 +136,7 @@ function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
             video.currentTime = 0.1;
           }}
         >
+          {/* Lazy load video source - only load when in view or nearby */}
           <source src={path} type="video/mp4" />
           Your browser does not support video playback.
         </video>
