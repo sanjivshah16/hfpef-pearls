@@ -68,3 +68,5 @@
 - [x] Make all videos loop continuously
 - [x] Autoplay videos when card appears in viewport
 - [x] Implement lazy loading for videos to reduce latency
+
+- [x] Remove video controls - videos should just play continuously on repeat

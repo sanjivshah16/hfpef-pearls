@@ -123,10 +123,10 @@ function MediaItem({ media, index, isAdmin, onDelete }: MediaItemProps) {
       {media.type === 'video' ? (
         <video 
           ref={videoRef}
-          controls 
           loop
           muted
           playsInline
+          autoPlay
           className="w-full rounded-lg max-h-[400px] object-contain bg-muted"
           preload="metadata"
           onError={() => setError(true)}
