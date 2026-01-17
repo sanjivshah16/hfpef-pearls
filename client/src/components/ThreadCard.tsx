@@ -247,7 +247,7 @@ function TweetContent({ tweet, originalTweet, index, isFirst, threadId, isAdmin,
   const visibleMedia = tweet.media.filter(m => !hiddenMedia.includes(m.path));
   
   return (
-    <div className={`relative group ${!isFirst ? 'border-l-2 border-primary/20 ml-4 pl-4' : ''}`}>
+    <div className="relative group">
       {/* Admin buttons for individual tweet */}
       {isAdmin && !isEditing && (
         <div className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">

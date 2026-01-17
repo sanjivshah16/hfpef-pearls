@@ -70,3 +70,4 @@
 - [x] Implement lazy loading for videos to reduce latency
 
 - [x] Remove video controls - videos should just play continuously on repeat
+- [x] Remove indentations from tweets below the initial tweet
